@@ -33,7 +33,7 @@ class PyClient(BasicClient):
 		raise Exception("_fn_on_msg_recv doit être surchargé")
 	
 	def _fn_send(self, msg):
-		self._socket.send(str(msg).strip()+"\n")
+		self._socket.send(bytes(str(msg).strip()+"\n", "utf-8"))
 		
 	def _loopRecv(self):
 		msg = ""
@@ -48,14 +48,14 @@ class PyClient(BasicClient):
 				self._fn_on_msg_recv(msg)
 		
 if __name__ == "__main__":
-	print SERVER_ROOT_DIR
+	print(SERVER_ROOT_DIR)
 	lock_write = threading.Lock()
 	
 	def write(msg, color=None):
 		lock_write.acquire()
 		try:
-			if color: print color+str(msg).strip()+colorConsol.ENDC
-			else: print str(msg).strip()
+			if color: print(color+str(msg).strip()+colorConsol.ENDC)
+			else: print(str(msg).strip())
 		finally:
 			lock_write.release()
 	
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 	client.start()
 
 	while True:
-		msg = raw_input()
+		msg = input()
 		client.send(msg)
 
 

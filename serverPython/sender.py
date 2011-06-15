@@ -5,7 +5,7 @@
 Thread servant à envoyer les messages daux clients
 """
 import threading
-from Queue import Queue, Empty
+from queue import Queue, Empty
 import colorConsol
 
 

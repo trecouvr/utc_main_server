@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 @author Thomas
@@ -35,34 +35,35 @@ for serial in scanSerials():
 
 server.parseMsg(ID_SERVER, "ls()")
 
+import queue
 class KillableInput(threading.Thread):
 	def __init__(self):
 		super(self.__class__, self).__init__()
 		self.daemon = True
-		self._queue = Queue.Queue()
+		self._queue = queue.Queue()
 
 	def run(self):
 		while not server.e_shutdown.isSet():
-			self._queue.put(raw_input())
+			self._queue.put(input())
 
 	def get(self, timeout):
 		try:
 			c = self._queue.get(True, timeout)
-		except Queue.Empty:
+		except queue.Empty:
 			return None
 		else:
 			self._queue.task_done()
 			return c
 
-input = KillableInput()
-input.start()
+myInput = KillableInput()
+myInput.start()
 
 while not server.e_shutdown.isSet():
-	msg = input.get(1)
+	msg = myInput.get(1)
 	if msg:
 		server.parseMsg(ID_SERVER, msg)
 
-print 'fin thread principal'
+print('fin thread principal')
 
 
 

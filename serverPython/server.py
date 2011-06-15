@@ -124,8 +124,8 @@ class Server():
 	def write(self, msg, color=None):
 		self._lock_write.acquire()
 		try:
-			if color: print color+str(msg).strip()+colorConsol.ENDC
-			else: print str(msg).strip()
+			if color: print(color+str(msg).strip()+colorConsol.ENDC)
+			else: print(str(msg).strip())
 		finally:
 			self._lock_write.release()
 

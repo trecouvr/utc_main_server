@@ -26,7 +26,7 @@ for line in f:
 	t = re.search('(?<=#define)\s+(?P<var>\w+)(\s|=)+[\'"](?P<value>[^\s|\/]+)[\'"]', line)
 	if t:
 		locals()[t.group('var')] = t.group('value')
-		if __name__ == "__main__": print t.group('var'),"\t= (str)",t.group('value')
+		if __name__ == "__main__": print(t.group('var'),"\t= (str)",t.group('value'))
 	else:
 		t = re.search('(?<=#define)\s+(?P<var>\w+)(\s|=)+(?P<value>[^\s|\/]+)', line)
 		if t:
@@ -35,9 +35,10 @@ for line in f:
 			except:
 				value = None
 			locals()[t.group('var')] = value
-			if __name__ == "__main__": print t.group('var'),"\t= (int)",value
+			if __name__ == "__main__": print(t.group('var'),"\t= (int)",value)
 f.close()
 
 
 if __name__ == "__main__":
-	print SERVER_ROOT_DIR
+	print(SERVER_ROOT_DIR)
+	pass

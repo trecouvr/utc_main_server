@@ -7,17 +7,20 @@ Les classes représentant les différnets clients acceptés par le serveur
 
 import sys
 import os
-SERVER_ROOT_DIR  = os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0]
+SERVER_ROOT_DIR  = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
 sys.path.append(SERVER_ROOT_DIR)
+sys.path.append(os.path.join(SERVER_ROOT_DIR,"serverPython"))
 
 import threading
 import socket
 import time
 import re
-import Queue
+import queue
+import traceback
+from functools import reduce
 
-import colorConsol
 from protocole import *
+import colorConsol
 
 class BasicClient(threading.Thread):
 	def __init__(self, threadname, fn_write=None):
@@ -36,7 +39,7 @@ class BasicClient(threading.Thread):
 		try:
 			self._fn_send(msg)
 		except Exception as ex:
-			self.fn_write(str(traceback.print_tb(sys.exc_info()[2])) + "\n" + str(ex), colorConsol.FAIL)
+			self._fn_write("".join(traceback.format_tb(sys.exc_info()[2])) + "\n" + str(ex), colorConsol.FAIL)
 		finally:
 			self._lock_send.release()
 	
@@ -70,7 +73,7 @@ class BasicClient(threading.Thread):
 		@return [m1,m2,m3, ...] sinon
 		"""
 		#print (self._partialMsg,msg)
-		msg = self._partialMsg + msg
+		msg = self._partialMsg + str(msg,"utf-8")
 		index = msg.rfind('\n')
 		if index < 0:
 			self._partialMsg = msg
@@ -82,7 +85,7 @@ class BasicClient(threading.Thread):
 			return [ m for m in msg[:index].split('\n') ]
 	
 	def __del__(self):
-		print "%s destroy"%self
+		self._fn_write("%s destroy"%self)
 
 	def __repr__(self):
 		return "BasicClient"
@@ -95,7 +98,7 @@ class ServerClient(BasicClient):
 		self._mask_block_from = 0 # on ne block personne à part soit même
 
 	def __del__(self):
-		print "%s destroy"%self
+		self._fn_write("%s destroy"%self)
 		
 	def stop(self):
 		self._running = False
@@ -158,7 +161,7 @@ class TCPClient(ServerClient):
 		self.s.settimeout(1.0) # timeout
 		
 	def _fn_send(self, msg):
-		self.s.send(str(msg).strip()+"\n")
+		self.s.send(bytes(str(msg).strip()+"\n","utf-8"))
 		
 	def _loopRecv(self):
 		msg = ""
@@ -167,7 +170,7 @@ class TCPClient(ServerClient):
 		except socket.timeout:
 			pass
 		except socket.error as er:
-			self._server.write(self+" "+str(er), colorConsol.FAIL)
+			self._server.write(str(self)+" "+str(er), colorConsol.FAIL)
 		else:
 			for msg in self.combineWithPartial(msg):
 				self._server.write("Received from %s : '%s'"%(self,msg))
@@ -185,7 +188,7 @@ class LocalClient(ServerClient):
 		ServerClient.__init__(self, server, id, "LocalClient(%s)"%id)
 		self.mask_recv_from = -1
 		self.macros = {}
-		self._queue = Queue.Queue()
+		self._queue = queue.Queue()
 
 	def __repr__(self):
 		return "LocalClient(%s)"%(self.id)
