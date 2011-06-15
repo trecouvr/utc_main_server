@@ -250,6 +250,9 @@ class LocalClient(Client):
 				params = t.group('params')
 				params = params.strip().split(',')
 				self.cmdIntern(cmd, *params)
+			# appel d'une macro
+			if msg_split[1] in self.macros:
+				self._server.parseMsg(self.id, self.macros[msg_split[1]])
 		self._queue.task_done()
 
 	def cmdIntern(self,cmd, *params):
