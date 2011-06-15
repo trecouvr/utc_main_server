@@ -47,7 +47,8 @@ class KillableInput(threading.Thread):
 		self._queue = Queue.Queue()
 
 	def run(self):
-		self._queue.put(raw_input())
+		while not server.e_shutdown.isSet():
+			self._queue.put(raw_input())
 
 	def get(self, timeout):
 		try:
@@ -65,8 +66,6 @@ while not server.e_shutdown.isSet():
 	msg = input.get(1)
 	if msg:
 		server.parseMsg(ID_SERVER, msg)
-	if server.e_shutdown.isSet():
-		break
 
 print 'fin thread principal'
 
