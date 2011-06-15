@@ -7,13 +7,14 @@ Les classes représentant les différnets clients acceptés par le serveur
 
 import sys
 import os
-ROOT_DIR  = os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0]
-sys.path.append(os.path.join(ROOT_DIR,"com"))
+SERVER_ROOT_DIR  = os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0]
+sys.path.append(SERVER_ROOT_DIR)
 
 import threading
 import socket
 import time
 import re
+import Queue
 
 import colorConsol
 from protocole import *
@@ -21,18 +22,14 @@ from protocole import *
 class Client(threading.Thread):
 	def __init__(self, server, id, name):
 		threading.Thread.__init__(self, None, None, name)
-		self._server = server # la socket pour envoyer recevoir
+		self.daemon = True
+		self._server = server
 		self.id = id # id du client sur le serveur
+		self._mask_block_from = 0 # on ne block personne à part soit même
 		self._running = False # le client tourne
-		self.mask_recv_from = (-1 ^ (1 << self.id)) # tout le monde sauf soit meme 
 		self._partialMsg = ""
 		self.e_validate = threading.Event()
 
-		if self.id != ID_SERVER:
-			self.blockRecv() # empecher toute reception
-			self.setMaskRecvFrom(ID_SERVER,1) # les cartes ne peuvent recevoir des messages que du serveur
-			self.setMaskRecvFrom(ID_IA,1) # et de l'IA
-	
 	def __del__(self):
 		self.s.close()
 		print "%s destroy"%self.name()
@@ -45,16 +42,16 @@ class Client(threading.Thread):
 		@param mask_from id du client qui a envoyé le message
 		@param msg message à envoyer
 		"""
-		if self.mask_recv_from & mask_from:
+		if self._mask_block_from & mask_from:
+			#self._server.write("client with mask '%s' is not authorized to send to client #%s"%(mask_from,self.id), colorConsol.WARNING)
+			pass
+		else:
 			#self._server.write("send to %s, %s"%(self.id,msg))
 			try:
 				self._fn_send(msg)
 			except Exception as ex:
 				self._server.write(ex, colorConsol.FAIL)
 				if self.id != ID_SERVER: self.stop()
-		else:
-			#self._server.write("client with mask '%s' is not authorized to send to client #%s"%(mask_from,self.id), colorConsol.WARNING)
-			pass
 	
 	def run(self):
 		"""
@@ -62,13 +59,15 @@ class Client(threading.Thread):
 		"""
 		self._server.write("%s start"%self.name(), colorConsol.OKGREEN)
 		self._running = True
-		self.send(1,str(ID_SERVER)+C_SEP_SEND+str(Q_IDENT)+C_SEP_SEND+str(self.id)+"\n")
 		while self._running and not self._server.e_shutdown.isSet():
 			self._loopRecv()
 		self._server.write("%s arreté"%self.name(), colorConsol.WARNING)
 
 	def combineWithPartial(self, msg):
 		"""
+		Cette fonction sert à former des messages complets à partir de morceaux,
+		quand on reçoit des informations via TCP on est jamais assuré d'avoir la ligne entière du premier coup
+		
 		@return [] si le message ne peut pas etre exploité (pas de \n à la fin)
 		@return [m1,m2,m3, ...] sinon
 		"""
@@ -84,22 +83,34 @@ class Client(threading.Thread):
 			#print self._partialMsg,[ m for m in msg[:index].split('\n') ]
 			return [ m for m in msg[:index].split('\n') ]
 	
-	def setMaskRecvFrom(self, id_client, b):
+	def blockFrom(self, id_client):
 		"""
-		set l'état d"coute du client choisit
-		@param id_client le client choisit
-		@param b 1 pour écouter, 0 pour ne pas écouter
+		Bloque l'écoute sur un client choisit
+		
+		@param id_client (in) id du client choisit
 		"""
-		if b:
-			self.mask_recv_from |= (1 << id_client)
-		else:
-			self.mask_recv_from &= ~(b << id_client)
+		self._mask_block_from |= (1 << id_client)
+
+	def allowFrom(self, id_client):
+		"""
+		Authorise un client à nous parler
+
+		@param id_client (int) id du client choisit
+		"""
+		self._mask_block_from &= ~(1 << id_client)
+		
 	
-	def blockRecv(self):
+	def blockAll(self):
 		"""
 		Le client ne reçoit plus de messages
 		"""
-		self.mask_recv_from = 0
+		self._mask_block_from = -1
+
+	def allowAll(self):
+		"""
+		Ecoute de tout le monde
+		"""
+		self._mask_block_from = -1
 
 	def __repr__(self):
 		return self.name()
@@ -139,20 +150,23 @@ class TCPClient(Client):
 				self._server.write("Received from %s : '%s'"%(self.name(),msg))
 				if msg:
 					self._server.parseMsg(self.id, msg)	
-
+	
 class LocalClient(Client):
 	"""
 	Le client qui est dans le terminal lancé par main.py
 	"""
 	def __init__(self, server, id):
-		Client.__init__(self, server, id, "LocalClient()")
+		Client.__init__(self, server, id, "LocalClient(%s)"%id)
 		self.mask_recv_from = -1
 		self.macros = {}
+		self._queue = Queue.Queue()
 
 	def name(self):
 		return "LocalClient(%s)"%(self.id)
 	
 	def _fn_send(self, msg):
+		self._queue.put(msg)
+		"""
 		self._server.write("Received on server : '%s'"%msg)
 		id_from, msg = msg.strip().split(C_SEP_SEND,1)
 		id_from = int(id_from)
@@ -220,14 +234,48 @@ class LocalClient(Client):
 			# macros
 			if msg in self.macros:
 				self._server.parseMsg(self.id, self.macros[msg])
+		"""
 					
-					
-	
 	def _loopRecv(self):
-		msg = raw_input()+"\n"
-		for msg in self.combineWithPartial(msg):
-			msg = msg.strip()
-			self._server.parseMsg(self.id, msg)
+		msg = self._queue.get()
+		self._server.write("Received on server : '%s'"%msg)
+		msg_split = str(msg).split(C_SEP_SEND)
+		id_from = int(msg_split[0])
+		if len(msg_split) > 1:
+			# commande interne
+			t = re.match('(?P<cmd>\w+)\((?P<params>.*)\)',msg_split[1])
+			if t:
+				cmd = t.group('cmd')
+				cmd = cmd.lower()
+				params = t.group('params')
+				params = params.strip().split(',')
+				self.cmdIntern(cmd, *params)
+		self._queue.task_done()
+
+	def cmdIntern(self,cmd, *params):
+		if cmd == 'macro':
+			self.addMacro(*params)
+		elif cmd == 'sd':
+			self.shutdownServer()
+		elif cmd == 'ls':
+			self.listClients()
+		else:
+			self._server.write("ERROR : commande '%s' inconnue"%cmd, colorConsol.FAIL)
+
+	def addMacro(self, *params):
+		if len(params) != 2:
+			self._server.write("ERROR : mauvais nombre de paramètres, signature de la fonction : macro(macro,cmd)", colorConsol.FAIL)
+		else:
+			macro = params[0]
+			cmd = params[1]
+			self.macros[macro] = cmd
+			self._server.write("'%s' <=> '%s'"%(macro,cmd), colorConsol.OKGREEN)
+
+	def listClients(self):
+		self._server.write(reduce(lambda x,y: str(x) + str(y),self._server.clients), colorConsol.OKBLUE)
+		
+	def shutdownServer(self):
+		self._server.shutdown()	
 		
 class SerialClient(Client):
 	"""
