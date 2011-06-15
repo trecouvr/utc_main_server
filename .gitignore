@@ -1,0 +1,5 @@
+*.pyc
+*.o
+build/
+*.hex
+*.elf
