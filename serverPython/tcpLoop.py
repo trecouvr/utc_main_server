@@ -17,6 +17,8 @@ class TCPLoop(threading.Thread):
 	def __init__(self, server, host, port):
 		"""
 		@param server le serveur
+		@param host l'host
+		@param port le port d'écoute
 		"""
 		threading.Thread.__init__(self, None, None, "TCPLoop(%s,%s)"%(host,port))
 		self.daemon = True

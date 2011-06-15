@@ -13,6 +13,8 @@ PYTHON
 TODO
 	- gestion de groupes de communication
 	- un fichier par class client ?
+	- killer les clients quand il sont déconnecter (donc il faut detecter leur deconnexion)
+	- récupération de la conf des clients
 
 
 

@@ -15,10 +15,12 @@ class PyClient(BasicClient):
 		
 	classe python de base pour communiquer avec le serveur
 	"""
-	def __init__(self, host, port, threadname="PyClient", fn_write=None):
+	def __init__(self, host, port, threadname, fn_write=None):
 		"""
 		@param host ip dus erveur
 		@param port port sur lequel écouter
+		@param threadname le nom voulue pour le thread
+		@param fn_write la fonction qui servira pour écrire (exceptions, debug, ...)
 		"""
 		super(PyClient,self).__init__(threadname, fn_write)
 		self._socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
