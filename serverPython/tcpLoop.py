@@ -7,6 +7,7 @@ Le thread écoutant les connection TCP entrantes pour ensuite les transformer en
 import client
 import threading
 import socket
+import colorConsol
 
 
 class TCPLoop(threading.Thread):
@@ -30,13 +31,13 @@ class TCPLoop(threading.Thread):
 	
 	def __del__(self):
 		self._socket.close()
-		print "TCPLoop(%s,%s) destroy"%(self._host,self._port)
+		self._server.write("TCPLoop(%s,%s) destroy"%(self._host,self._port), colorConsol.WARNING)
 	
 	def run(self):
-		print "TCPLoop(%s,%s) start"%(self._host,self._port)
+		self._server.write("TCPLoop(%s,%s) start"%(self._host,self._port), colorConsol.OKGREEN)
 		while not self._server.e_shutdown.isSet():
 			self._loop()
-		print "TCPLoop(%s,%s) arreté"%(self._host,self._port)
+		self._server.write("TCPLoop(%s,%s) arreté"%(self._host,self._port), colorConsol.WARNING)
 	
 	def _loop(self):
 		try:
