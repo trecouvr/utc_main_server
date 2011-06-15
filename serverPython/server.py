@@ -7,8 +7,8 @@ TCP, et Serial peuvent se connecter et échanger des informations
 """
 import sys
 import os
-ROOT_DIR  = os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0]
-sys.path.append(os.path.join(ROOT_DIR,"com"))
+SERVER_ROOT_DIR  = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
+sys.path.append(SERVER_ROOT_DIR)
 
 import random
 import threading
@@ -108,7 +108,7 @@ class Server():
 		"""
 		parse un message avant de l'envoyer
 		"""
-		if msg and msg[0] not in '-0123456789':
+		if msg and msg[0] not in '-0123456789': # si on a tapé une commande directement
 			msg = str(ID_SERVER)+'.' + msg
 		
 		try:
