@@ -4,3 +4,4 @@ build/
 *.hex
 *.elf
 *.out
+doc/
