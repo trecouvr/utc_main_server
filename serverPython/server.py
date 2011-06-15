@@ -53,7 +53,7 @@ class Server():
 
 	def _identClient(self, client):
 		self.parseMsg(ID_SERVER, str(client.id)+C_SEP_SEND+'-999'+C_SEP_SEND+str(Q_IDENT)) # une identification
-		client.e_validate.wait(2)
+		#client.e_validate.wait(2)
 		self.write("After ident :%s"%client, colorConsol.OKGREEN)
 		
 	def addTCPClient(self, conn, addr):
