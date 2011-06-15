@@ -8,9 +8,6 @@ ajout des ports serials
 identification et réarrangement
 """
 
-import os
-ROOT_DIR  = os.path.split(os.path.split(os.path.dirname(os.path.abspath(__file__)))[0])[0]
-#print ROOT_DIR
 
 import subprocess
 import time
@@ -25,7 +22,7 @@ server.start()
 
 #server.addSubprocessClient("clients/python/UDPClient/main.py")
 #server.addSubprocessClient(os.path.join(ROOT_DIR,"Visio","UTCamera","bin","UTCamera"))
-server.addSubprocessClient(os.path.join(ROOT_DIR,"pinceControl","AX12","scriptPince.py"))
+#server.addSubprocessClient(os.path.join(ROOT_DIR,"pinceControl","AX12","scriptPince.py"))
 #server.addSubprocessClient(os.path.join(ROOT_DIR,"clients","soutenance_quentin","main.py"))
 #server.addSubprocessClient(["../../../IA/main.py","1","0"])
 #p = subprocess.Popen(os.path.join(ROOT_DIR,"smartphone.py"))
@@ -41,8 +38,35 @@ def scanSerials():
 for serial in scanSerials():
 	server.addSerialClient(serial,115200)
 
-server.parseMsg(ID_SERVER, "ls")
+server.parseMsg(ID_SERVER, "ls()")
 
+class KillableInput(threading.Thread):
+	def __init__(self):
+		super(self.__class__, self).__init__()
+		self.daemon = True
+		self._queue = Queue.Queue()
+
+	def run(self):
+		self._queue.put(raw_input())
+
+	def get(self, timeout):
+		try:
+			c = self._queue.get(True, timeout)
+		except Queue.Empty:
+			return None
+		else:
+			self._queue.task_done()
+			return c
+
+input = KillableInput()
+input.start()
+
+while not server.e_shutdown.isSet():
+	msg = input.get(1)
+	if msg:
+		server.parseMsg(ID_SERVER, msg)
+	if server.e_shutdown.isSet():
+		break
 
 print 'fin thread principal'
 
