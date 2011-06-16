@@ -39,7 +39,7 @@ class BasicClient(threading.Thread):
 		try:
 			self._fn_send(msg)
 		except Exception as ex:
-			self._fn_write("".join(traceback.format_tb(sys.exc_info()[2])) + "\n" + str(ex), colorConsol.FAIL)
+			self._fn_write("\n".join(traceback.extract_tb(sys.exc_info()[2])) + "\n" + str(ex), colorConsol.FAIL)
 		finally:
 			self._lock_send.release()
 	
@@ -235,7 +235,7 @@ class LocalClient(ServerClient):
 			self._server.write("'%s' <=> '%s'"%(macro,cmd), colorConsol.OKGREEN)
 
 	def listClients(self):
-		self._server.write(reduce(lambda x,y: str(x) + str(y),self._server.clients), colorConsol.OKBLUE)
+		self._server.write("\n".join(map(lambda c: str(c),self._server.clients.values())), colorConsol.OKBLUE)
 		
 	def shutdownServer(self):
 		self._server.shutdown()	

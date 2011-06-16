@@ -10,7 +10,7 @@ import os
 SERVER_ROOT_DIR  = os.path.split(os.path.dirname(os.path.abspath(__file__)))[0]
 sys.path.append(SERVER_ROOT_DIR)
 
-import random
+
 import threading
 import serial
 import subprocess
@@ -24,14 +24,15 @@ from protocole import *
 
 class Server():
 	"""
-	Cette classe permet la communication avec les différents ports série
-	
 	@author Thomas
+	
+	Cette classe est le coeur du projet, elle permet de faire communiquer
+	entre eux des clients connectés en TCP, pipe, ou serial.
+	
 	"""
 	def __init__(self):
-		self.clients = []
+		self.clients = {}
 		self.sender = Sender(self)
-		#self.tcpLoop = TCPLoop(self,'', random.randint(40000,60000))
 		self.tcpLoop = TCPLoop(self,'', 50000)
 		self.e_shutdown = threading.Event()
 		self._lock_write = threading.Lock()
@@ -39,9 +40,9 @@ class Server():
 		
 		locClient = LocalClient(self, 0)
 		locClient.start()
-		self.clients.append(locClient)
+		self.clients[locClient.id] = locClient
 
-		self.id_non_validate = 13
+		self.id_non_validate = -1
 		
 		
 	def start(self):
@@ -60,9 +61,9 @@ class Server():
 		self._lock_addClient.acquire()
 		try:
 			client = TCPClient(self,self.id_non_validate, conn, addr)
-			self.id_non_validate+=1
+			self.id_non_validate-=1
 			client.start()
-			self.clients.append(client)
+			self.clients[client.id] = client
 			self._identClient(client)
 		except Exception as ex:
 			self.write(ex, colorConsol.FAIL)
@@ -75,9 +76,9 @@ class Server():
 		try:
 			s = serial.Serial(port, baudrate, timeout=1, writeTimeout=1)
 			client = SerialClient(self, self.id_non_validate, s, port, baudrate)
-			self.id_non_validate+=1
+			self.id_non_validate-=1
 			client.start()
-			self.clients.append(client)
+			self.clients[client.id] = client
 			time.sleep(1) # avant de pouvoir envoyer de recevoir des infos il faut attendre
 			self._identClient(client)
 		except Exception as ex:
@@ -97,9 +98,9 @@ class Server():
 				self.write(ex, colorConsol.FAIL)
 			else:
 				client = SubprocessClient(self, self.id_non_validate, process, exec_name)
-				self.id_non_validate+=1
+				self.id_non_validate-=1
 				client.start()
-				self.clients.append(client)
+				self.clients[client.id] = client
 				self._identClient(client)
 		finally:
 			self._lock_addClient.release()
@@ -114,12 +115,11 @@ class Server():
 		try:
 			id_to, msg = msg.strip().split(C_SEP_SEND,1)
 			id_to = int(id_to)
-			mask_from = (1 << id_client)
-			mask_to = -1 if id_to == -1 else (1 << id_to)
+			mask_from = (1 << id_client) if id_client > 0 else id_client
 			msg = str(id_client)+C_SEP_SEND+msg
-			self.sender.addMsg(mask_from, mask_to, msg)
+			self.sender.addMsg(mask_from, id_to, msg)
 		except ValueError as ex:
-			self.write("ERROR : Server.parseMsg : %s"%msg, colorConsol.FAIL);
+			self.write("".join(traceback.format_tb(sys.exc_info()[2])) + "\n" + str(ex) + "\n" + "ERROR : Server.parseMsg : %s"%msg, colorConsol.FAIL)
 	
 	def write(self, msg, color=None):
 		self._lock_write.acquire()
