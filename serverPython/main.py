@@ -33,7 +33,7 @@ def scanSerials():
 for serial in scanSerials():
 	server.addSerialClient(serial,115200)
 
-server.parseMsg(ID_SERVER, "ls()")
+server.parseMsg(ID_SERVER, "ls")
 
 import queue
 class KillableInput(threading.Thread):

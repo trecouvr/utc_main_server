@@ -202,17 +202,18 @@ class LocalClient(ServerClient):
 		msg_split = str(msg).split(C_SEP_SEND,1)
 		id_from = int(msg_split[0])
 		if len(msg_split) > 1:
-			# commande interne
-			t = re.match('(?P<cmd>\w+)\((?P<params>.*)\)',msg_split[1])
-			if t:
-				cmd = t.group('cmd')
-				cmd = cmd.lower()
-				params = t.group('params')
-				params = params.strip().split(',')
-				self.cmdIntern(cmd, *params)
 			# appel d'une macro
 			if msg_split[1] in self.macros:
 				self._server.parseMsg(self.id, self.macros[msg_split[1]])
+			# commande interne
+			else:
+				t = re.match('(?P<cmd>\w+) *(?P<params>.*)',msg_split[1])
+				if t:
+					cmd = t.group('cmd')
+					cmd = cmd.lower()
+					params = t.group('params')
+					params = [ _.strip() for _ in params.split(' ') ] if params else []
+					self.cmdIntern(cmd, *params)
 		self._queue.task_done()
 
 	def cmdIntern(self,cmd, *params):
@@ -222,6 +223,8 @@ class LocalClient(ServerClient):
 			self.shutdownServer()
 		elif cmd == 'ls':
 			self.listClients()
+		elif cmd == 'h':
+			self.showHelp()
 		else:
 			self._server.write("ERROR : commande '%s' inconnue"%cmd, colorConsol.FAIL)
 
@@ -238,7 +241,14 @@ class LocalClient(ServerClient):
 		self._server.write("\n".join(map(lambda c: str(c),self._server.clients.values())), colorConsol.OKBLUE)
 		
 	def shutdownServer(self):
-		self._server.shutdown()	
+		self._server.shutdown()
+
+	def showHelp(self):
+		self._server.write("\
+			ls\tlister les clients\n\
+			macro(macro, cmd)\tajouter une macro\n \
+			sd\téteindre le serveur\n\
+			", colorConsol.OKBLUE)
 		
 class SerialClient(ServerClient):
 	"""
