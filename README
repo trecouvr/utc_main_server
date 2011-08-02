@@ -19,3 +19,7 @@ TODO
 	- interface graphique ?
 
 
+FONCTIONNEMENT
+
+lancement : ./serverPython/main.py
+entrer une commande : <cmd> <p1> <p2> <p3> ...
